@@ -15,6 +15,7 @@ const posMap = {
 // State
 let currentSearch = "";
 let currentFilter = "all";
+let isSavingPlayer = false;
 
 // Elements
 const playersGrid = document.getElementById('players-grid');
@@ -27,6 +28,19 @@ const pageTitle = document.getElementById('page-title');
 const pageSubtitle = document.getElementById('page-subtitle');
 const globalAverageEl = document.getElementById('global-average');
 const topRatedEl = document.getElementById('top-rated-player');
+const addPlayerBtn = document.getElementById('add-player-btn');
+const playerModal = document.getElementById('player-modal');
+const closePlayerModalBtn = document.getElementById('close-player-modal');
+const cancelPlayerModalBtn = document.getElementById('cancel-player-modal');
+const playerForm = document.getElementById('player-form');
+const playerModalTitle = document.getElementById('player-modal-title');
+const playerModalSubtitle = document.getElementById('player-modal-subtitle');
+const playerIdInput = document.getElementById('player-id');
+const playerNameInput = document.getElementById('player-name');
+const playerNumberInput = document.getElementById('player-number');
+const playerPositionInput = document.getElementById('player-position');
+const playerRatingInput = document.getElementById('player-rating');
+const savePlayerBtn = document.getElementById('save-player-btn');
 
 // Init
 async function init() {
@@ -70,6 +84,15 @@ async function fetchPlayers() {
     }
 }
 
+function renderEmptyRoster(message, detail = "") {
+    playersGrid.innerHTML = `
+        <div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-muted);">
+            <i class="fa-solid fa-users-slash" style="font-size:2.5rem; margin-bottom:1rem; display:block;"></i>
+            <p style="font-size:1.1rem;">${message}</p>
+            ${detail ? `<p style="font-size:0.85rem; margin-top:0.5rem;">${detail}</p>` : ""}
+        </div>`;
+}
+
 function getInitials(name) {
     const parts = name.split(' ');
     if (parts.length >= 2) {
@@ -85,6 +108,22 @@ function renderRoster() {
         return matchesSearch && matchesPos;
     });
 
+    if (players.length === 0) {
+        renderEmptyRoster(
+            "No hay jugadores en la base de datos.",
+            "Pulsa en \"Añadir jugador\" para crear el primero."
+        );
+        return;
+    }
+
+    if (filteredPlayers.length === 0) {
+        renderEmptyRoster(
+            "No hay jugadores que coincidan con la búsqueda.",
+            "Prueba a cambiar el texto o el filtro de posición."
+        );
+        return;
+    }
+
     playersGrid.innerHTML = filteredPlayers.map(p => `
         <div class="player-card">
             <div class="player-number">${p.number}</div>
@@ -96,6 +135,16 @@ function renderRoster() {
                     <i class="fa-solid fa-star"></i>
                     <span id="card-rating-${p.id}">${p.rating}</span>/10
                 </div>
+            </div>
+            <div class="player-card-actions">
+                <button class="card-action-btn edit" type="button" data-action="edit" data-id="${p.id}">
+                    <i class="fa-solid fa-pen"></i>
+                    <span>Editar</span>
+                </button>
+                <button class="card-action-btn delete" type="button" data-action="delete" data-id="${p.id}">
+                    <i class="fa-solid fa-trash"></i>
+                    <span>Borrar</span>
+                </button>
             </div>
         </div>
     `).join('');
@@ -161,7 +210,11 @@ function renderEvaluations() {
 }
 
 function updateDashboardStats() {
-    if (players.length === 0) return;
+    if (players.length === 0) {
+        globalAverageEl.textContent = "0.0";
+        topRatedEl.textContent = "-";
+        return;
+    }
     
     const total = players.reduce((sum, p) => sum + p.rating, 0);
     const avg = (total / players.length).toFixed(1);
@@ -169,6 +222,113 @@ function updateDashboardStats() {
 
     const topPlayer = [...players].sort((a, b) => b.rating - a.rating)[0];
     topRatedEl.textContent = `${topPlayer.name} (${topPlayer.rating})`;
+}
+
+function openPlayerModal(player = null) {
+    const isEditing = Boolean(player);
+    playerModalTitle.textContent = isEditing ? "Editar jugador" : "Añadir jugador";
+    playerModalSubtitle.textContent = isEditing
+        ? "Actualiza los datos del jugador seleccionado"
+        : "Completa los datos del nuevo jugador";
+
+    playerIdInput.value = player?.id ?? "";
+    playerNameInput.value = player?.name ?? "";
+    playerNumberInput.value = player?.number ?? "";
+    playerPositionInput.value = player?.position ?? "POR";
+    playerRatingInput.value = player?.rating ?? 5;
+    savePlayerBtn.textContent = isEditing ? "Guardar cambios" : "Guardar jugador";
+
+    playerModal.classList.remove('hidden');
+    playerNameInput.focus();
+}
+
+function closePlayerModal() {
+    playerModal.classList.add('hidden');
+    playerForm.reset();
+    playerIdInput.value = "";
+    playerPositionInput.value = "POR";
+    playerRatingInput.value = 5;
+}
+
+async function handlePlayerSubmit(event) {
+    event.preventDefault();
+
+    if (isSavingPlayer) return;
+    isSavingPlayer = true;
+    savePlayerBtn.disabled = true;
+
+    const id = playerIdInput.value ? parseInt(playerIdInput.value, 10) : null;
+    const payload = {
+        name: playerNameInput.value.trim(),
+        number: parseInt(playerNumberInput.value, 10),
+        position: playerPositionInput.value,
+        rating: parseInt(playerRatingInput.value, 10)
+    };
+
+    try {
+        if (!payload.name) {
+            throw new Error("El nombre es obligatorio.");
+        }
+
+        if (id) {
+            const { error } = await supabase
+                .from('players')
+                .update(payload)
+                .eq('id', id);
+
+            if (error) throw error;
+
+            players = players.map(player => player.id === id ? { ...player, ...payload, id } : player);
+        } else {
+            const { data, error } = await supabase
+                .from('players')
+                .insert(payload)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            players = [...players, data];
+        }
+
+        players.sort((a, b) => a.name.localeCompare(b.name));
+        closePlayerModal();
+        renderRoster();
+        renderEvaluations();
+        updateDashboardStats();
+    } catch (error) {
+        console.error('Error al guardar jugador:', error);
+        alert(`No se pudo guardar el jugador. ${error.message}`);
+    } finally {
+        isSavingPlayer = false;
+        savePlayerBtn.disabled = false;
+    }
+}
+
+async function deletePlayer(playerId) {
+    const id = parseInt(playerId, 10);
+    const player = players.find(item => item.id === id);
+    if (!player) return;
+
+    const confirmed = window.confirm(`¿Seguro que quieres borrar a ${player.name}?`);
+    if (!confirmed) return;
+
+    try {
+        const { error } = await supabase
+            .from('players')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        players = players.filter(item => item.id !== id);
+        renderRoster();
+        renderEvaluations();
+        updateDashboardStats();
+    } catch (error) {
+        console.error('Error al borrar jugador:', error);
+        alert(`No se pudo borrar el jugador. ${error.message}`);
+    }
 }
 
 function setupEventListeners() {
@@ -180,6 +340,33 @@ function setupEventListeners() {
     filterSelect.addEventListener('change', (e) => {
         currentFilter = e.target.value;
         renderRoster();
+    });
+
+    addPlayerBtn.addEventListener('click', () => openPlayerModal());
+    closePlayerModalBtn.addEventListener('click', closePlayerModal);
+    cancelPlayerModalBtn.addEventListener('click', closePlayerModal);
+    playerForm.addEventListener('submit', handlePlayerSubmit);
+    playerModal.addEventListener('click', (event) => {
+        if (event.target === playerModal) {
+            closePlayerModal();
+        }
+    });
+
+    playersGrid.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-action]');
+        if (!button) return;
+
+        const { action, id } = button.dataset;
+        if (action === 'edit') {
+            const player = players.find(item => item.id === parseInt(id, 10));
+            if (player) {
+                openPlayerModal(player);
+            }
+        }
+
+        if (action === 'delete') {
+            deletePlayer(id);
+        }
     });
 
     navItems.forEach(item => {

@@ -55,14 +55,20 @@
                             <i class="fa-solid fa-search"></i>
                             <input type="text" id="search-player" placeholder="Buscar jugador...">
                         </div>
-                        <div class="filter-box">
-                            <select id="filter-position">
-                                <option value="all">Todas las posiciones</option>
-                                <option value="POR">Portero</option>
-                                <option value="DEF">Defensa</option>
-                                <option value="MED">Centrocampista</option>
-                                <option value="DEL">Delantero</option>
-                            </select>
+                        <div class="controls-actions">
+                            <div class="filter-box">
+                                <select id="filter-position">
+                                    <option value="all">Todas las posiciones</option>
+                                    <option value="POR">Portero</option>
+                                    <option value="DEF">Defensa</option>
+                                    <option value="MED">Centrocampista</option>
+                                    <option value="DEL">Delantero</option>
+                                </select>
+                            </div>
+                            <button class="primary-btn" id="add-player-btn" type="button">
+                                <i class="fa-solid fa-user-plus"></i>
+                                <span>Añadir jugador</span>
+                            </button>
                         </div>
                     </div>
                     <div class="players-grid" id="players-grid">
@@ -97,6 +103,50 @@
                 </section>
             </div>
         </main>
+    </div>
+
+    <div class="modal-backdrop hidden" id="player-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <h2 id="player-modal-title">Añadir jugador</h2>
+                    <p id="player-modal-subtitle">Completa los datos del jugador</p>
+                </div>
+                <button class="icon-btn" id="close-player-modal" type="button" aria-label="Cerrar formulario">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="player-form" class="player-form">
+                <input type="hidden" id="player-id">
+                <div class="form-grid">
+                    <label>
+                        <span>Nombre</span>
+                        <input type="text" id="player-name" required>
+                    </label>
+                    <label>
+                        <span>Número</span>
+                        <input type="number" id="player-number" min="1" max="99" required>
+                    </label>
+                    <label>
+                        <span>Posición</span>
+                        <select id="player-position" required>
+                            <option value="POR">Portero</option>
+                            <option value="DEF">Defensa</option>
+                            <option value="MED">Centrocampista</option>
+                            <option value="DEL">Delantero</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Valoración</span>
+                        <input type="number" id="player-rating" min="1" max="10" required>
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button class="secondary-btn" id="cancel-player-modal" type="button">Cancelar</button>
+                    <button class="primary-btn" id="save-player-btn" type="submit">Guardar jugador</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

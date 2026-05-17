@@ -190,6 +190,12 @@ body {
     gap: 20px;
 }
 
+.controls-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
 .search-box, .filter-box {
     background-color: var(--bg-card);
     border: 1px solid var(--glass-border);
@@ -223,6 +229,48 @@ body {
 
 .search-box i {
     color: var(--text-muted);
+}
+
+.primary-btn,
+.secondary-btn,
+.icon-btn,
+.card-action-btn {
+    border: none;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.primary-btn,
+.secondary-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, var(--accent-red), #ff5666);
+    color: var(--text-main);
+    box-shadow: var(--shadow-glow);
+}
+
+.primary-btn:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, #ff4457, #ff7683);
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    border: 1px solid var(--glass-border);
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.09);
 }
 
 /* Players Grid */
@@ -298,6 +346,41 @@ body {
 .player-info {
     text-align: center;
     width: 100%;
+}
+
+.player-card-actions {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.card-action-btn {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.card-action-btn.edit {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-main);
+    border: 1px solid var(--glass-border);
+}
+
+.card-action-btn.delete {
+    background: rgba(227, 38, 54, 0.12);
+    color: #ff8d97;
+    border: 1px solid rgba(227, 38, 54, 0.25);
+}
+
+.card-action-btn:hover {
+    transform: translateY(-1px);
 }
 
 .player-name {
@@ -469,6 +552,113 @@ body {
     color: var(--accent-red);
 }
 
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 7, 10, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 100;
+}
+
+.modal-backdrop.hidden {
+    display: none;
+}
+
+.modal-card {
+    width: min(100%, 560px);
+    background: linear-gradient(180deg, rgba(25, 28, 36, 0.96), rgba(16, 18, 23, 0.98));
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    padding: 28px;
+}
+
+.modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.modal-header h2 {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+}
+
+.modal-header p {
+    color: var(--text-muted);
+}
+
+.icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-main);
+    border: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.player-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.form-grid input,
+.form-grid select {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: var(--text-main);
+    font-family: var(--font-main);
+    font-size: 1rem;
+    outline: none;
+}
+
+.form-grid input:focus,
+.form-grid select:focus {
+    border-color: rgba(227, 38, 54, 0.55);
+    box-shadow: 0 0 0 3px rgba(227, 38, 54, 0.15);
+}
+
+.form-grid select option {
+    background-color: var(--bg-sidebar);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
 @media (max-width: 768px) {
     .app-container {
         flex-direction: column;
@@ -499,6 +689,23 @@ body {
     }
     .views-container {
         padding: 20px;
+    }
+    .controls-bar,
+    .controls-actions,
+    .form-grid,
+    .form-actions,
+    .player-card-actions {
+        flex-direction: column;
+    }
+    .controls-actions,
+    .form-actions {
+        align-items: stretch;
+    }
+    .form-grid {
+        display: flex;
+    }
+    .search-box {
+        max-width: none;
     }
     .evaluation-header, .evaluation-row {
         grid-template-columns: 1fr;
