@@ -92,23 +92,21 @@ async function fetchPlayers() {
             throw error;
         }
 
-        players = Array.isArray(data) && data.length > 0 ? data : loadLocalPlayers();
-
-        if (!Array.isArray(data) || data.length === 0) {
-            console.warn("Supabase no devolvio jugadores. Se cargara una plantilla local.");
-            rosterNotice = "No llegaban jugadores desde Supabase, asi que se ha cargado una plantilla local de respaldo.";
-            savePlayersLocally();
-            renderAll();
-            return;
+        if (Array.isArray(data) && data.length > 0) {
+            players = data;
+            rosterNotice = '';
+        } else {
+            console.warn('Supabase no devolvio jugadores. Se cargara una plantilla local.');
+            players = loadLocalPlayers();
+            rosterNotice = 'No llegaban jugadores desde Supabase, asi que se ha cargado una plantilla local de respaldo.';
         }
 
-        rosterNotice = '';
         savePlayersLocally();
         renderAll();
     } catch (err) {
         console.error('Error al obtener jugadores:', err);
         players = loadLocalPlayers();
-        rosterNotice = "No se pudo conectar con Supabase y se esta mostrando una plantilla local.";
+        rosterNotice = 'No se pudo conectar con Supabase y se esta mostrando una plantilla local.';
         savePlayersLocally();
         renderAll();
     }
@@ -153,7 +151,7 @@ function getInitials(name) {
 }
 
 function openPlayerModal() {
-    playerModalTitle.textContent = 'Añadir jugador';
+    playerModalTitle.textContent = 'Anadir jugador';
     playerModalSubtitle.textContent = 'Completa los datos del jugador';
     playerForm.reset();
     playerIdInput.value = '';
@@ -186,6 +184,8 @@ async function handlePlayerSubmit(event) {
     };
 
     if (!newPlayer.name || Number.isNaN(newPlayer.number) || Number.isNaN(newPlayer.rating)) {
+        rosterNotice = 'Rellena nombre, numero y valoracion para guardar el jugador.';
+        renderAll();
         return;
     }
 
@@ -231,13 +231,13 @@ async function handlePlayerSubmit(event) {
         }
     } catch (error) {
         console.error('Error al guardar el jugador:', error);
-        renderRoster('El jugador se ha añadido solo en local porque no se pudo guardar en Supabase.');
-        renderEvaluations();
-        updateDashboardStats();
+        rosterNotice = 'El jugador se ha anadido solo en local porque no se pudo guardar en Supabase.';
+        savePlayersLocally();
+        renderAll();
     }
 }
 
-function renderAll(rosterMessage = '') {
+function renderAll(rosterMessage = rosterNotice) {
     renderRoster(rosterMessage);
     renderEvaluations();
     updateDashboardStats();
@@ -250,8 +250,17 @@ function renderRoster(message = '') {
         return matchesSearch && matchesPos;
     });
 
+    const notice = message
+        ? `
+            <div style="grid-column:1/-1; padding:1rem 1.25rem; border:1px solid rgba(255, 209, 102, 0.25); border-radius:12px; background:rgba(255, 209, 102, 0.08); color:#ffd166;">
+                <i class="fa-solid fa-circle-info" style="margin-right:0.5rem;"></i>${message}
+            </div>
+        `
+        : '';
+
     if (filteredPlayers.length === 0) {
         playersGrid.innerHTML = `
+            ${notice}
             <div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-muted);">
                 <i class="fa-solid fa-users-slash" style="font-size:2.5rem; margin-bottom:1rem; display:block;"></i>
                 <p style="font-size:1.1rem;">No hay jugadores que coincidan con la busqueda.</p>
@@ -260,14 +269,6 @@ function renderRoster(message = '') {
         `;
         return;
     }
-
-    const notice = message
-        ? `
-            <div style="grid-column:1/-1; padding:1rem 1.25rem; border:1px solid rgba(255, 209, 102, 0.25); border-radius:12px; background:rgba(255, 209, 102, 0.08); color:#ffd166;">
-                <i class="fa-solid fa-circle-info" style="margin-right:0.5rem;"></i>${message}
-            </div>
-        `
-        : '';
 
     playersGrid.innerHTML = `
         ${notice}
@@ -313,16 +314,19 @@ function renderEvaluations() {
 
         slider.addEventListener('change', async (event) => {
             const val = parseInt(event.target.value, 10);
-            const id = parseInt(event.target.dataset.id, 10);
-            const player = players.find((item) => item.id === id);
+            const rawId = event.target.dataset.id;
+            const numericId = Number(rawId);
+            const id = Number.isNaN(numericId) ? rawId : numericId;
+            const player = players.find((item) => String(item.id) === String(id));
 
             if (!player) {
                 return;
             }
 
             player.rating = val;
+            savePlayersLocally();
 
-            const cardRating = document.getElementById(`card-rating-${id}`);
+            const cardRating = document.getElementById(`card-rating-${player.id}`);
             if (cardRating) {
                 cardRating.textContent = val;
             }
@@ -337,7 +341,7 @@ function renderEvaluations() {
                 const { error } = await supabase
                     .from('players')
                     .update({ rating: val })
-                    .eq('id', id);
+                    .eq('id', player.id);
 
                 if (error) {
                     throw error;
