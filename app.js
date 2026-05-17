@@ -49,10 +49,24 @@ const pageTitle = document.getElementById('page-title');
 const pageSubtitle = document.getElementById('page-subtitle');
 const globalAverageEl = document.getElementById('global-average');
 const topRatedEl = document.getElementById('top-rated-player');
+const addPlayerBtn = document.getElementById('add-player-btn');
+const playerModal = document.getElementById('player-modal');
+const closePlayerModalBtn = document.getElementById('close-player-modal');
+const cancelPlayerModalBtn = document.getElementById('cancel-player-modal');
+const playerForm = document.getElementById('player-form');
+const playerModalTitle = document.getElementById('player-modal-title');
+const playerModalSubtitle = document.getElementById('player-modal-subtitle');
+const playerIdInput = document.getElementById('player-id');
+const playerNameInput = document.getElementById('player-name');
+const playerNumberInput = document.getElementById('player-number');
+const playerPositionInput = document.getElementById('player-position');
+const playerRatingInput = document.getElementById('player-rating');
 
 async function init() {
-    await fetchPlayers();
     setupEventListeners();
+    players = cloneFallbackPlayers();
+    renderAll('Cargando plantilla...');
+    await fetchPlayers();
 }
 
 async function fetchPlayers() {
@@ -100,6 +114,79 @@ function getInitials(name) {
         return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
+}
+
+function openPlayerModal() {
+    playerModalTitle.textContent = 'Añadir jugador';
+    playerModalSubtitle.textContent = 'Completa los datos del jugador';
+    playerForm.reset();
+    playerIdInput.value = '';
+    playerRatingInput.value = '7';
+    playerModal.classList.remove('hidden');
+    playerNameInput.focus();
+}
+
+function closePlayerModal() {
+    playerModal.classList.add('hidden');
+}
+
+function getNextPlayerId() {
+    if (players.length === 0) {
+        return 1;
+    }
+
+    return Math.max(...players.map((player) => Number(player.id) || 0)) + 1;
+}
+
+async function handlePlayerSubmit(event) {
+    event.preventDefault();
+
+    const newPlayer = {
+        id: getNextPlayerId(),
+        name: playerNameInput.value.trim(),
+        number: parseInt(playerNumberInput.value, 10),
+        position: playerPositionInput.value,
+        rating: parseInt(playerRatingInput.value, 10)
+    };
+
+    if (!newPlayer.name || Number.isNaN(newPlayer.number) || Number.isNaN(newPlayer.rating)) {
+        return;
+    }
+
+    players = [...players, newPlayer].sort((a, b) => a.name.localeCompare(b.name));
+    renderAll();
+    closePlayerModal();
+
+    if (!supabase) {
+        return;
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('players')
+            .insert({
+                name: newPlayer.name,
+                number: newPlayer.number,
+                position: newPlayer.position,
+                rating: newPlayer.rating
+            })
+            .select()
+            .single();
+
+        if (error) {
+            throw error;
+        }
+
+        if (data) {
+            players = players.map((player) => (player.id === newPlayer.id ? data : player));
+            renderAll();
+        }
+    } catch (error) {
+        console.error('Error al guardar el jugador:', error);
+        renderRoster('El jugador se ha añadido solo en local porque no se pudo guardar en Supabase.');
+        renderEvaluations();
+        updateDashboardStats();
+    }
 }
 
 function renderAll(rosterMessage = '') {
@@ -242,6 +329,16 @@ function setupEventListeners() {
         renderRoster();
     });
 
+    addPlayerBtn.addEventListener('click', openPlayerModal);
+    closePlayerModalBtn.addEventListener('click', closePlayerModal);
+    cancelPlayerModalBtn.addEventListener('click', closePlayerModal);
+    playerModal.addEventListener('click', (event) => {
+        if (event.target === playerModal) {
+            closePlayerModal();
+        }
+    });
+    playerForm.addEventListener('submit', handlePlayerSubmit);
+
     navItems.forEach((item) => {
         item.addEventListener('click', () => {
             navItems.forEach((nav) => nav.classList.remove('active'));
@@ -259,6 +356,12 @@ function setupEventListeners() {
                 pageSubtitle.textContent = 'Valora el rendimiento del 1 al 10';
             }
         });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !playerModal.classList.contains('hidden')) {
+            closePlayerModal();
+        }
     });
 }
 
