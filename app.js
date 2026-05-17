@@ -1,7 +1,9 @@
 // Configuracion de Supabase
 const supabaseUrl = 'https://livxwcmjhbcdcckfmdaz.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxpdnh3Y21qaGJjZGNja2ZtZGF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5OTAzOTQsImV4cCI6MjA5NDU2NjM5NH0._eZpwItalNClrjaspQYMR2RWjeAreNRGG9OdldZkYKc';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm3Y21qaGJjZGNja2ZtZGF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5OTAzOTQsImV4cCI6MjA5NDU2NjM5NH0._eZpwItalNClrjaspQYMR2RWjeAreNRGG9OdldZkYKc';
+const supabase = window.supabase?.createClient
+    ? window.supabase.createClient(supabaseUrl, supabaseKey)
+    : null;
 
 let players = [];
 const fallbackPlayers = [
@@ -54,6 +56,13 @@ async function init() {
 }
 
 async function fetchPlayers() {
+    if (!supabase) {
+        console.warn('La libreria de Supabase no esta disponible. Se cargara la plantilla local.');
+        players = cloneFallbackPlayers();
+        renderAll('No se ha cargado Supabase en el navegador, asi que se muestra una plantilla local.');
+        return;
+    }
+
     try {
         const { data, error } = await supabase
             .from('players')
@@ -184,6 +193,10 @@ function renderEvaluations() {
             }
 
             updateDashboardStats();
+
+            if (!supabase) {
+                return;
+            }
 
             try {
                 const { error } = await supabase
