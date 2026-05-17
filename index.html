@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Athletic Team Manager</title>
+    <meta name="description" content="Aplicación de gestión y evaluación de plantilla de equipo de fútbol.">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>Athletic Manager</span>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" data-view="roster">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Plantilla</span>
+                </button>
+                <button class="nav-item" data-view="evaluation">
+                    <i class="fa-solid fa-star"></i>
+                    <span>Evaluaciones</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">M</div>
+                    <span>Míster</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header" style="background-image: url('file:///C:/Users/ibonl/.gemini/antigravity/brain/16a2c995-4e01-4bf2-b76f-e18b6bf710d7/stadium_bg_1779016642673.png');">
+                <div class="header-overlay"></div>
+                <div class="header-content">
+                    <h1 id="page-title">Plantilla del Equipo</h1>
+                    <p id="page-subtitle">Gestiona a los 20 jugadores de tu plantilla</p>
+                </div>
+            </header>
+
+            <!-- Views Container -->
+            <div class="views-container">
+                <!-- Roster View -->
+                <section id="view-roster" class="view-section active">
+                    <div class="controls-bar">
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="search-player" placeholder="Buscar jugador...">
+                        </div>
+                        <div class="filter-box">
+                            <select id="filter-position">
+                                <option value="all">Todas las posiciones</option>
+                                <option value="POR">Portero</option>
+                                <option value="DEF">Defensa</option>
+                                <option value="MED">Centrocampista</option>
+                                <option value="DEL">Delantero</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="players-grid" id="players-grid">
+                        <!-- Players will be injected here via JS -->
+                    </div>
+                </section>
+
+                <!-- Evaluation View -->
+                <section id="view-evaluation" class="view-section">
+                    <div class="evaluation-dashboard">
+                        <div class="stat-card">
+                            <h3>Media Global</h3>
+                            <div class="stat-value" id="global-average">0.0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Mejor Valorado</h3>
+                            <div class="stat-value" id="top-rated-player">-</div>
+                        </div>
+                    </div>
+                    
+                    <div class="evaluation-list-container">
+                        <div class="evaluation-header">
+                            <div class="col-player">Jugador</div>
+                            <div class="col-pos">Pos</div>
+                            <div class="col-dob">F. Nacimiento</div>
+                            <div class="col-rating">Valoración (1-10)</div>
+                        </div>
+                        <div class="evaluation-list" id="evaluation-list">
+                            <!-- Evaluation rows injected via JS -->
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
