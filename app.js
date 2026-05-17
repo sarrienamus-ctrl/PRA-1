@@ -150,12 +150,30 @@ function getInitials(name) {
     return name.substring(0, 2).toUpperCase();
 }
 
-function openPlayerModal() {
-    playerModalTitle.textContent = 'Anadir jugador';
-    playerModalSubtitle.textContent = 'Completa los datos del jugador';
+function getPlayerById(playerId) {
+    return players.find((player) => String(player.id) === String(playerId));
+}
+
+function openPlayerModal(playerId = null) {
+    const player = playerId ? getPlayerById(playerId) : null;
+
     playerForm.reset();
-    playerIdInput.value = '';
-    playerRatingInput.value = '7';
+
+    if (player) {
+        playerModalTitle.textContent = 'Editar jugador';
+        playerModalSubtitle.textContent = 'Actualiza los datos del jugador';
+        playerIdInput.value = player.id;
+        playerNameInput.value = player.name;
+        playerNumberInput.value = player.number;
+        playerPositionInput.value = player.position;
+        playerRatingInput.value = player.rating;
+    } else {
+        playerModalTitle.textContent = 'Anadir jugador';
+        playerModalSubtitle.textContent = 'Completa los datos del jugador';
+        playerIdInput.value = '';
+        playerRatingInput.value = '7';
+    }
+
     playerModal.classList.remove('hidden');
     playerNameInput.focus();
 }
@@ -175,30 +193,48 @@ function getNextPlayerId() {
 async function handlePlayerSubmit(event) {
     event.preventDefault();
 
-    const newPlayer = {
-        id: getNextPlayerId(),
+    const editingPlayerId = playerIdInput.value;
+    const isEditing = Boolean(editingPlayerId);
+    const existingPlayer = isEditing ? getPlayerById(editingPlayerId) : null;
+    const playerDraft = {
+        id: existingPlayer?.id ?? getNextPlayerId(),
         name: playerNameInput.value.trim(),
         number: parseInt(playerNumberInput.value, 10),
         position: playerPositionInput.value,
         rating: parseInt(playerRatingInput.value, 10)
     };
 
-    if (!newPlayer.name || Number.isNaN(newPlayer.number) || Number.isNaN(newPlayer.rating)) {
+    if (!playerDraft.name || Number.isNaN(playerDraft.number) || Number.isNaN(playerDraft.rating)) {
         rosterNotice = 'Rellena nombre, numero y valoracion para guardar el jugador.';
         renderAll();
         return;
     }
 
-    const duplicatedNumber = players.some((player) => Number(player.number) === newPlayer.number);
+    const duplicatedNumber = players.some((player) =>
+        Number(player.number) === playerDraft.number && String(player.id) !== String(playerDraft.id)
+    );
+
     if (duplicatedNumber) {
-        rosterNotice = `Ya existe un jugador con el numero ${newPlayer.number}.`;
+        rosterNotice = `Ya existe un jugador con el numero ${playerDraft.number}.`;
         renderAll();
         playerNumberInput.focus();
         return;
     }
 
-    players = [...players, newPlayer].sort((a, b) => a.name.localeCompare(b.name));
-    rosterNotice = `${newPlayer.name} se ha anadido correctamente.`;
+    if (isEditing && !existingPlayer) {
+        rosterNotice = 'No se encontro el jugador que intentabas editar.';
+        renderAll();
+        closePlayerModal();
+        return;
+    }
+
+    players = isEditing
+        ? players.map((player) => (String(player.id) === String(playerDraft.id) ? playerDraft : player))
+        : [...players, playerDraft];
+    players.sort((a, b) => a.name.localeCompare(b.name));
+    rosterNotice = isEditing
+        ? `${playerDraft.name} se ha actualizado correctamente.`
+        : `${playerDraft.name} se ha anadido correctamente.`;
     savePlayersLocally();
     renderAll();
     closePlayerModal();
@@ -208,30 +244,51 @@ async function handlePlayerSubmit(event) {
     }
 
     try {
-        const { data, error } = await supabase
-            .from('players')
-            .insert({
-                name: newPlayer.name,
-                number: newPlayer.number,
-                position: newPlayer.position,
-                rating: newPlayer.rating
-            })
-            .select()
-            .single();
+        const response = isEditing
+            ? await supabase
+                .from('players')
+                .update({
+                    name: playerDraft.name,
+                    number: playerDraft.number,
+                    position: playerDraft.position,
+                    rating: playerDraft.rating
+                })
+                .eq('id', playerDraft.id)
+                .select()
+                .single()
+            : await supabase
+                .from('players')
+                .insert({
+                    name: playerDraft.name,
+                    number: playerDraft.number,
+                    position: playerDraft.position,
+                    rating: playerDraft.rating
+                })
+                .select()
+                .single();
+
+        const { data, error } = response;
 
         if (error) {
             throw error;
         }
 
         if (data) {
-            players = players.map((player) => (player.id === newPlayer.id ? data : player));
-            rosterNotice = `${newPlayer.name} se ha guardado en Supabase.`;
+            players = isEditing
+                ? players.map((player) => (String(player.id) === String(playerDraft.id) ? data : player))
+                : players.map((player) => (String(player.id) === String(playerDraft.id) ? data : player));
+            players.sort((a, b) => a.name.localeCompare(b.name));
+            rosterNotice = isEditing
+                ? `${playerDraft.name} se ha actualizado en Supabase.`
+                : `${playerDraft.name} se ha guardado en Supabase.`;
             savePlayersLocally();
             renderAll();
         }
     } catch (error) {
         console.error('Error al guardar el jugador:', error);
-        rosterNotice = 'El jugador se ha anadido solo en local porque no se pudo guardar en Supabase.';
+        rosterNotice = isEditing
+            ? 'Los cambios se han guardado solo en local porque no se pudo actualizar Supabase.'
+            : 'El jugador se ha anadido solo en local porque no se pudo guardar en Supabase.';
         savePlayersLocally();
         renderAll();
     }
@@ -284,9 +341,21 @@ function renderRoster(message = '') {
                         <span id="card-rating-${player.id}">${player.rating}</span>/10
                     </div>
                 </div>
+                <div class="player-card-actions">
+                    <button class="card-action-btn edit" type="button" data-edit-player="${player.id}">
+                        <i class="fa-solid fa-pen"></i>
+                        <span>Editar</span>
+                    </button>
+                </div>
             </div>
         `).join('')}
     `;
+
+    document.querySelectorAll('[data-edit-player]').forEach((button) => {
+        button.addEventListener('click', () => {
+            openPlayerModal(button.dataset.editPlayer);
+        });
+    });
 }
 
 function renderEvaluations() {
