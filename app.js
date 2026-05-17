@@ -43,17 +43,30 @@ async function fetchPlayers() {
             
         if (error) throw error;
         
-        if (data && data.length > 0) {
-            players = data;
-        } else {
-            console.log("No hay jugadores en la base de datos.");
+        // Siempre asignar (aunque sea array vacío)
+        players = data || [];
+
+        if (players.length === 0) {
+            console.warn("Supabase devolvió 0 jugadores. Verifica que la tabla 'players' tenga datos y que RLS permita lectura anónima.");
+            playersGrid.innerHTML = `
+                <div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-muted);">
+                    <i class="fa-solid fa-users-slash" style="font-size:2.5rem; margin-bottom:1rem; display:block;"></i>
+                    <p style="font-size:1.1rem;">No hay jugadores en la base de datos.</p>
+                    <p style="font-size:0.85rem; margin-top:0.5rem;">Comprueba la tabla <strong>players</strong> en Supabase y las políticas de Row Level Security.</p>
+                </div>`;
         }
         
         renderRoster();
         renderEvaluations();
         updateDashboardStats();
-    } catch (error) {
-        console.error('Error al obtener jugadores:', error);
+    } catch (err) {
+        console.error('Error al obtener jugadores:', err);
+        playersGrid.innerHTML = `
+            <div style="grid-column:1/-1; text-align:center; padding:3rem; color:#ff6b6b;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size:2.5rem; margin-bottom:1rem; display:block;"></i>
+                <p style="font-size:1.1rem;">Error al conectar con Supabase.</p>
+                <p style="font-size:0.85rem; margin-top:0.5rem; color:var(--text-muted);">${err.message}</p>
+            </div>`;
     }
 }
 
