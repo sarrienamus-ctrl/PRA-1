@@ -6,6 +6,7 @@ const supabase = window.supabase?.createClient
     : null;
 
 let players = [];
+const localPlayersKey = 'athletic-manager-players';
 const fallbackPlayers = [
     { id: 1, name: 'Unai Simon', position: 'POR', number: 1, rating: 9 },
     { id: 2, name: 'Julen Agirrezabala', position: 'POR', number: 13, rating: 8 },
@@ -38,6 +39,7 @@ const posMap = {
 
 let currentSearch = '';
 let currentFilter = 'all';
+let rosterNotice = '';
 
 const playersGrid = document.getElementById('players-grid');
 const evaluationList = document.getElementById('evaluation-list');
@@ -64,16 +66,19 @@ const playerRatingInput = document.getElementById('player-rating');
 
 async function init() {
     setupEventListeners();
-    players = cloneFallbackPlayers();
-    renderAll('Cargando plantilla...');
+    players = loadLocalPlayers();
+    rosterNotice = 'Cargando plantilla...';
+    renderAll();
     await fetchPlayers();
 }
 
 async function fetchPlayers() {
     if (!supabase) {
         console.warn('La libreria de Supabase no esta disponible. Se cargara la plantilla local.');
-        players = cloneFallbackPlayers();
-        renderAll('No se ha cargado Supabase en el navegador, asi que se muestra una plantilla local.');
+        players = loadLocalPlayers();
+        rosterNotice = 'No se ha cargado Supabase en el navegador, asi que se muestra una plantilla local.';
+        savePlayersLocally();
+        renderAll();
         return;
     }
 
@@ -87,25 +92,56 @@ async function fetchPlayers() {
             throw error;
         }
 
-        players = data || [];
+        players = Array.isArray(data) && data.length > 0 ? data : loadLocalPlayers();
 
-        if (players.length === 0) {
+        if (!Array.isArray(data) || data.length === 0) {
             console.warn("Supabase no devolvio jugadores. Se cargara una plantilla local.");
-            players = cloneFallbackPlayers();
-            renderAll("No llegaban jugadores desde Supabase, asi que se ha cargado una plantilla local de respaldo.");
+            rosterNotice = "No llegaban jugadores desde Supabase, asi que se ha cargado una plantilla local de respaldo.";
+            savePlayersLocally();
+            renderAll();
             return;
         }
 
+        rosterNotice = '';
+        savePlayersLocally();
         renderAll();
     } catch (err) {
         console.error('Error al obtener jugadores:', err);
-        players = cloneFallbackPlayers();
-        renderAll("No se pudo conectar con Supabase y se esta mostrando una plantilla local.");
+        players = loadLocalPlayers();
+        rosterNotice = "No se pudo conectar con Supabase y se esta mostrando una plantilla local.";
+        savePlayersLocally();
+        renderAll();
     }
 }
 
 function cloneFallbackPlayers() {
     return fallbackPlayers.map((player) => ({ ...player }));
+}
+
+function loadLocalPlayers() {
+    try {
+        const rawPlayers = window.localStorage.getItem(localPlayersKey);
+
+        if (!rawPlayers) {
+            return cloneFallbackPlayers();
+        }
+
+        const parsedPlayers = JSON.parse(rawPlayers);
+        return Array.isArray(parsedPlayers) && parsedPlayers.length > 0
+            ? parsedPlayers
+            : cloneFallbackPlayers();
+    } catch (error) {
+        console.error('No se pudieron leer los jugadores guardados en local:', error);
+        return cloneFallbackPlayers();
+    }
+}
+
+function savePlayersLocally() {
+    try {
+        window.localStorage.setItem(localPlayersKey, JSON.stringify(players));
+    } catch (error) {
+        console.error('No se pudieron guardar los jugadores en local:', error);
+    }
 }
 
 function getInitials(name) {
@@ -153,7 +189,17 @@ async function handlePlayerSubmit(event) {
         return;
     }
 
+    const duplicatedNumber = players.some((player) => Number(player.number) === newPlayer.number);
+    if (duplicatedNumber) {
+        rosterNotice = `Ya existe un jugador con el numero ${newPlayer.number}.`;
+        renderAll();
+        playerNumberInput.focus();
+        return;
+    }
+
     players = [...players, newPlayer].sort((a, b) => a.name.localeCompare(b.name));
+    rosterNotice = `${newPlayer.name} se ha anadido correctamente.`;
+    savePlayersLocally();
     renderAll();
     closePlayerModal();
 
@@ -179,6 +225,8 @@ async function handlePlayerSubmit(event) {
 
         if (data) {
             players = players.map((player) => (player.id === newPlayer.id ? data : player));
+            rosterNotice = `${newPlayer.name} se ha guardado en Supabase.`;
+            savePlayersLocally();
             renderAll();
         }
     } catch (error) {
